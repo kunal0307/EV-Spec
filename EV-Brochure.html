@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional EV Spec Sheet Generator & Single A4 Print</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0A3563',
+              green: '#54B936',
+              dark: '#061d38'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    .a4-container {
+      width: 210mm;
+      min-height: 297mm;
+    }
+
+    /* Strict Single Page A4 Print Rules */
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      #printableA4Page, #printableA4Page * { visibility: visible; }
+      #printableA4Page {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        page-break-inside: avoid !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800">
+
+  <!-- Top Action Navigation Bar -->
+  <header class="bg-brand-navy text-white shadow-md sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-brand-green flex items-center justify-center font-bold text-lg shadow">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-bold">EV Brochure & Spec Sheet System</h1>
+          <p class="text-[10px] text-slate-300">Multi-Model Storage & Clean A4 Export</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Model Selection Switcher -->
+        <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
+          <label for="modelSelectDropdown" class="text-[11px] text-slate-300 font-medium">Model:</label>
+          <select id="modelSelectDropdown" onchange="switchModel(this.value)" class="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer">
+          </select>
+        </div>
+
+        <button id="adminToggleBtn" onclick="handleAdminToggle()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold border border-white/20 transition flex items-center gap-1.5">
+          <i id="adminLockIcon" class="fa-solid fa-lock text-brand-green"></i>
+          <span id="panelToggleText">Open Admin Panel</span>
+        </button>
+        
+        <button onclick="window.print()" class="px-3.5 py-1.5 rounded-lg bg-brand-green hover:bg-emerald-600 text-white text-xs font-bold shadow transition flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i> Print (Single A4)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Password Verification Modal -->
+  <div id="passwordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden no-print">
+    <div class="bg-white rounded-2xl max-w-sm w-full mx-4 p-6 shadow-2xl border border-slate-100">
+      <div class="text-center mb-4">
+        <div class="w-12 h-12 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center mx-auto mb-2 text-xl">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-800">Admin Authentication</h3>
+        <p class="text-xs text-slate-500 mt-1">Please enter password to unlock editor</p>
+      </div>
+
+      <form onsubmit="verifyPassword(event)" class="space-y-3">
+        <div>
+          <input type="password" id="adminPasswordInput" placeholder="Enter password..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
+          <p id="passwordError" class="text-[11px] text-red-600 mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Incorrect password. Try again.</p>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="closePasswordModal()" class="w-1/2 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Cancel</button>
+          <button type="submit" class="w-1/2 py-2 text-xs font-bold text-white bg-brand-navy hover:bg-slate-800 rounded-lg transition shadow">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 flex flex-col lg:flex-row gap-6 items-start justify-center">
+
+    <!-- 1. COMPREHENSIVE ADMIN PANEL -->
+    <div id="adminPanelDrawer" class="w-full lg:w-96 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 no-print hidden max-h-[88vh] overflow-y-auto">
+      
+      <!-- Top Title & Controls -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+        <h2 class="text-sm font-bold text-brand-navy flex items-center gap-1.5">
+          <i class="fa-solid fa-pen-to-square text-brand-green"></i> Vehicle Specs Manager
+        </h2>
+        <div class="flex items-center gap-1.5">
+          <button onclick="createNewModel()" class="text-[10px] bg-brand-green/20 text-brand-navy font-bold px-2 py-0.5 rounded hover:bg-brand-green/30 transition">
+            + New
+          </button>
+          <button onclick="lockAdminPanel()" title="Lock Admin Panel" class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded font-semibold transition">
+            <i class="fa-solid fa-lock"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- FORM WITH TOP ACTION BUTTONS -->
+      <form id="evDataForm" onsubmit="handleFormSubmit(event)" class="space-y-2.5 text-xs">
+        
+        <!-- TOP ACTION BUTTONS (DELETE & SAVE NOW AT TOP) -->
+        <div class="flex gap-2 pb-2 border-b border-slate-100">
+          <button type="button" onclick="deleteCurrentModel()" class="w-1/3 py-2 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-trash-can text-[11px]"></i> Delete
+          </button>
+          <button type="submit" class="w-2/3 py-2 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-lg transition shadow flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk text-brand-green"></i> Save Changes
+          </button>
+        </div>
+
+        <!-- Real-Time Info Badge -->
+        <div class="flex items-center justify-between text-[10px] text-slate-400 bg-slate-50 px-2.5 py-1 rounded">
+          <span><i class="fa-solid fa-bolt text-brand-green mr-1"></i> Live Editing Active</span>
+          <span class="text-brand-green font-semibold">Instant Reflection</span>
+        </div>
+
+        <!-- Image Upload -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-0.5">Vehicle Image (Auto Compressed 1 Photo)</label>
+          <input type="file" id="imageFileInput" accept="image/*" onchange="handleCompressedImage(event)" class="text-[10px] block w-full file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-brand-navy/10 file:text-brand-navy hover:file:bg-brand-navy/20 cursor-pointer border border-slate-200 rounded p-1">
+          <input type="url" id="formImageUrl" placeholder="Or image URL..." oninput="previewUrl(this.value); liveUpdate();" class="mt-1 w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green text-[11px]">
+        </div>
+
+        <!-- Identity -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Model Name *</label>
+            <input type="text" id="formTitle" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Tagline / Subtitle</label>
+            <input type="text" id="formSubtitle" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Pricing with Automatic Calculation -->
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-brand-navy text-[11px]"><i class="fa-solid fa-tags text-brand-green mr-1"></i> Pricing & Auto Discount</span>
+            <span class="text-[9px] text-slate-400 font-medium">Auto-Calculates</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-0.5 text-[10px]">M.R.P. (₹)</label>
+              <input type="text" id="formMrp" placeholder="69990" oninput="calculateDiscountPrice(); liveUpdate();" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green text-[11px]">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-0.5 text-[10px]">Discount (₹)</label>
+              <input type="text" id="formDiscount" placeholder="5000" oninput="calculateDiscountPrice(); liveUpdate();" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green text-[11px]">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-0.5 text-[10px]">On Road Price *</label>
+              <input type="text" id="formPrice" required placeholder="64990" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green font-bold text-brand-green text-[11px]">
+            </div>
+          </div>
+        </div>
+
+        <!-- RTO Dropdown Menu & Range -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">RTO Category (Dropdown) *</label>
+            <select id="formRtoType" onchange="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green bg-white text-[11px] font-medium text-slate-700">
+              <option value="Non-RTO Low Speed (No License Required)">Non-RTO Low Speed (No License Required)</option>
+              <option value="RTO Registered (Driving License Required)">RTO Registered (Driving License Required)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Certified Range *</label>
+            <input type="text" id="formRange" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Speed & Battery -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Top Speed (km/h) *</label>
+            <input type="text" id="formTopSpeed" required placeholder="e.g. 25 km/h" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Battery Capacity & Chem *</label>
+            <input type="text" id="formBattery" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Charging & Motor -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Charging Time *</label>
+            <input type="text" id="formCharging" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Motor Type & Output *</label>
+            <input type="text" id="formMotor" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Tyres & Brakes Section -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Tyres & Wheels Details *</label>
+            <input type="text" id="formTyres" placeholder="e.g. 3.0-10 Tubeless | 10'' Iron Rims" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Braking System</label>
+            <input type="text" id="formBrakes" placeholder="e.g. Dual Disc 220 mm" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Gradeability & IP Rating -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Gradeability (Climb) *</label>
+            <input type="text" id="formGradeability" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">IP Protection Rating *</label>
+            <input type="text" id="formIpRating" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Warranty & Weight -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Official Warranty *</label>
+            <input type="text" id="formWarranty" required oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Weight & Clearance</label>
+            <input type="text" id="formWeight" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+          </div>
+        </div>
+
+        <!-- Smart Features -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-0.5">Smart Features (Comma separated)</label>
+          <input type="text" id="formFeatures" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green">
+        </div>
+
+        <!-- Detailed Specifications -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-0.5">Technical Specs (Label: Value per line)</label>
+          <textarea id="formDetails" rows="3" oninput="liveUpdate()" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-brand-green text-[11px]"></textarea>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- 2. A4 PRINTABLE WEBPAGE BROCHURE -->
+    <div class="flex-1 flex justify-center w-full">
+      <div id="printableA4Page" class="a4-container bg-white border border-slate-300 shadow-xl rounded-xl p-5 sm:p-6 flex flex-col justify-between">
+        
+        <div>
+          <!-- Header Area with Integrated Pricing & Discount -->
+          <div class="flex justify-between items-start border-b-2 border-brand-navy pb-2.5">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 bg-brand-navy text-white text-[9px] font-bold rounded uppercase tracking-wider">Official Spec Sheet</span>
+                <span id="outRtoBadge" class="text-[10px] text-brand-green font-bold flex items-center gap-1 bg-brand-green/10 px-2 py-0.5 rounded">
+                  <i class="fa-solid fa-circle-check"></i> Non-RTO Low Speed (No License Required)
+                </span>
+              </div>
+              <h1 id="outTitle" class="text-2xl font-black text-brand-navy mt-1 tracking-tight">Batt:RE gps:ie</h1>
+              <p id="outSubtitle" class="text-[11px] text-slate-500 font-medium">GPS Enabled Intelligent Electric Scooter</p>
+            </div>
+
+            <!-- Price & Discount Box -->
+            <div class="text-right bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl">
+              <div id="outDiscountRow" class="flex items-center justify-end gap-1.5 mb-0.5">
+                <span id="outMrp" class="text-xs text-slate-400 line-through font-semibold">₹69,990</span>
+                <span id="outDiscountBadge" class="text-[9px] font-extrabold bg-red-100 text-red-600 px-1.5 py-0.2 rounded">₹5,000 OFF</span>
+              </div>
+              <div class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">On Road Price</div>
+              <span id="outPrice" class="text-xl font-black text-brand-green">₹64,990</span>
+            </div>
+          </div>
+
+          <!-- Hero: 1 Photo (Left) + Highlights Grid (Right) -->
+          <div class="grid grid-cols-12 gap-3.5 mt-3 items-stretch">
+            
+            <!-- Left Column: Matched Alignment with Right Grid -->
+            <div class="col-span-5 flex flex-col justify-between">
+              <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center p-2 flex-1 min-h-[160px]">
+                <img id="outImage" src="" alt="EV Vehicle" class="w-full h-full object-contain rounded-lg">
+              </div>
+
+              <!-- Tyres & Wheel Setup: Exactly Matched with Official Warranty Box -->
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between mt-2 min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-circle-notch text-brand-green"></i> Tyres & Wheel Setup
+                </div>
+                <div id="outTyresBox" class="text-xs font-black text-slate-900 leading-snug my-0.5">3.0-10 Tubeless Tyres (10" Iron Rims)</div>
+                <div class="text-[9px] text-slate-400">Tyre Type & Rims</div>
+              </div>
+            </div>
+
+            <!-- 6 Key Performance Metric Badges -->
+            <div class="col-span-7 grid grid-cols-2 gap-2">
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-gauge-high text-brand-green"></i> Mileage / Range
+                </div>
+                <div id="outRange" class="text-xs font-black text-slate-900 leading-snug my-0.5">65 Km</div>
+                <div class="text-[9px] text-slate-400">Single Charge</div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-tachometer-alt text-brand-green"></i> Top Speed
+                </div>
+                <div id="outTopSpeed" class="text-xs font-black text-slate-900 leading-snug my-0.5">25 km/h (Low-Speed)</div>
+                <div class="text-[9px] text-slate-400">Tested Peak Speed</div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-battery-three-quarters text-brand-green"></i> Battery Spec
+                </div>
+                <div id="outBattery" class="text-xs font-black text-slate-900 leading-snug my-0.5">48V 24Ah LFP</div>
+                <div class="text-[9px] text-slate-400">2000 Cycles (LFP Chemistry)</div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-bolt-lightning text-brand-green"></i> Charging Speed
+                </div>
+                <div id="outCharging" class="text-xs font-black text-slate-900 leading-snug my-0.5">2.5 Hours</div>
+                <div class="text-[9px] text-slate-400">Fast 54.6V 10A Charger</div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-award text-brand-green"></i> Official Warranty
+                </div>
+                <div id="outWarranty" class="text-xs font-black text-slate-900 leading-snug my-0.5">3 Years / 50,000 Km Battery Warranty</div>
+                <div class="text-[9px] text-slate-400">Battery & Vehicle Cover</div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col justify-between min-h-[64px]">
+                <div class="flex items-center gap-1 text-brand-navy font-bold text-[10px]">
+                  <i class="fa-solid fa-water text-brand-green"></i> IP Protection
+                </div>
+                <div id="outIpRating" class="text-xs font-black text-slate-900 leading-snug my-0.5">IP67 Rated Battery Pack</div>
+                <div class="text-[9px] text-slate-400">Dust & Water Resistance</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Smart Features Pills -->
+          <div class="mt-3">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-microchip text-brand-navy"></i> Smart Connected Features & Telematics
+            </h3>
+            <div id="outFeaturesContainer" class="flex flex-wrap gap-1"></div>
+          </div>
+
+          <!-- Technical Specs Table -->
+          <div class="mt-3">
+            <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-list-check text-brand-navy"></i> Comprehensive Technical Specifications
+            </h3>
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+              <table class="w-full text-[11px] text-left">
+                <tbody id="outSpecsTable" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single Page Clean Footer -->
+        <div class="border-t border-slate-200 pt-2 mt-3">
+          <div class="flex justify-between items-end text-[10px] text-slate-500">
+            <div>
+              <p class="text-[9px] text-slate-500">Specifications and pricing are certified as per standard vehicle testing conditions.</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[9px] font-semibold">Authorized Signature & Dealer Stamp</p>
+              <div class="h-5 w-28 border-b border-dashed border-slate-400 mt-0.5"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const ADMIN_PASSWORD = "Malhosiya";
+    let isPanelUnlocked = false;
+
+    // Multi-Model Database
+    let evDatabase = [
+      {
+        id: "battre-gpsie",
+        title: "Batt:RE gps:ie Smart EV",
+        subtitle: "GPS Enabled Intelligent Electric Scooter",
+        mrp: "69990",
+        discount: "5000",
+        price: "64990",
+        rtoType: "Non-RTO Low Speed (No License Required)",
+        range: "65 Km Certified Mileage",
+        topSpeed: "25 km/h (Low-Speed Regulation)",
+        battery: "48V 24Ah Lithium Ferro Phosphate (LFP)",
+        charging: "2.5 Hours (Fast 54.6V 10A Charger)",
+        motor: "250W BLDC Hub Motor (12 Tube MOSFET Controller)",
+        tyres: "3.0-10 Tubeless Tyres (10\" Iron Rims)",
+        brakes: "Dual Disc Brakes (220 mm Front & Rear)",
+        gradeability: "10 Degrees Incline",
+        weight: "60 Kgs Kerb | 160 mm Ground Clearance",
+        ipRating: "IP67 Rated Battery Pack",
+        warranty: "3 Years / 50,000 Km Battery Warranty",
+        features: "GPS Live Tracking, Remote Immobilization, Geo-Fencing, Crash Alert, Tow Alert, Speeding Alert, Reverse Mode, Anti-Theft Alarm, Keyless Ignition, USB Charger",
+        imageUrl: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80",
+        details: [
+          { label: "Transmission & Controller", value: "BLDC Hub Motor with 12 Tube MOSFET Controller" },
+          { label: "Braking & Safety Tech", value: "Electronic Braking System (EBS) & Regenerative Braking" },
+          { label: "Suspension Setup", value: "Fork Type Hydraulic Front & Adjustable Rear Coilover" },
+          { label: "Lighting System", value: "High-Lumen LED Headlamp with Integrated DRL" },
+          { label: "IoT Telematics Subscription", value: "1st Year Free Included (₹1,200/year from 2nd year onwards)" }
+        ]
+      },
+      {
+        id: "ather-450x",
+        title: "Ather 450X (Gen 3)",
+        subtitle: "High-Speed Performance Electric Scooter",
+        mrp: "149000",
+        discount: "7000",
+        price: "142000",
+        rtoType: "RTO Registered (Driving License Required)",
+        range: "105 km Real-World (146 km ARAI)",
+        topSpeed: "90 km/h (Warp Mode)",
+        battery: "3.7 kWh Li-ion (NMC Chemistry)",
+        charging: "4 hr 30 min (Home) / 1.5 km/min (Ather Grid)",
+        motor: "6.2 kW Mid-Drive PMSM Motor",
+        tyres: "90/90-12 Tubeless Tyres (12\" Alloy Wheels)",
+        brakes: "Combined Dual Disc Brakes with Auto-Hold",
+        gradeability: "20 Degrees Steep Incline",
+        weight: "111 Kgs Kerb | 153 mm Clearance",
+        ipRating: "IP67 Water & Dust Protection",
+        warranty: "5 Years / 60,000 Km Comprehensive Cover",
+        features: "7-Inch Touchscreen, Google Maps Navigation, Bluetooth Audio & Call Alerts, OTA Updates, Cruise Control, Park Assist",
+        imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=800&q=80",
+        details: [
+          { label: "Chassis & Frame", value: "Precision Aluminium Die-Cast Chassis" },
+          { label: "Riding Modes", value: "Eco, SmartEco, Ride, Sport, and Warp Mode" },
+          { label: "Dashboard Screen", value: "Snapdragon 212 Quad-Core Android OS Display" }
+        ]
+      }
+    ];
+
+    let currentModelId = "battre-gpsie";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const stored = localStorage.getItem("a4_ev_database_v6");
+      if (stored) {
+        try { evDatabase = JSON.parse(stored); } catch(e){}
+      }
+      populateModelDropdown();
+      loadModelIntoView(currentModelId);
+    });
+
+    function saveDatabase() {
+      localStorage.setItem("a4_ev_database_v6", JSON.stringify(evDatabase));
+    }
+
+    function populateModelDropdown() {
+      const dropdown = document.getElementById("modelSelectDropdown");
+      dropdown.innerHTML = "";
+      evDatabase.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.id;
+        opt.innerText = item.title;
+        if (item.id === currentModelId) opt.selected = true;
+        dropdown.appendChild(opt);
+      });
+    }
+
+    function switchModel(id) {
+      currentModelId = id;
+      loadModelIntoView(id);
+    }
+
+    // Auto-Calculate On Road Price
+    function calculateDiscountPrice() {
+      const mrpRaw = document.getElementById("formMrp").value.replace(/[^0-9.]/g, '');
+      const discRaw = document.getElementById("formDiscount").value.replace(/[^0-9.]/g, '');
+
+      const mrp = parseFloat(mrpRaw) || 0;
+      const disc = parseFloat(discRaw) || 0;
+
+      if (mrp > 0) {
+        const finalPrice = Math.max(0, mrp - disc);
+        document.getElementById("formPrice").value = finalPrice;
+      }
+    }
+
+    function formatCurrency(val) {
+      if (!val) return "";
+      const num = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+      if (isNaN(num)) return val;
+      return "₹" + num.toLocaleString('en-IN');
+    }
+
+    // REAL-TIME LIVE UPDATE FUNCTION (Reflects instantly as you type)
+    function liveUpdate() {
+      document.getElementById("outTitle").innerText = document.getElementById("formTitle").value || "EV Model";
+      document.getElementById("outSubtitle").innerText = document.getElementById("formSubtitle").value || "";
+
+      // Realtime Price & Discount
+      const mrpVal = document.getElementById("formMrp").value;
+      const discVal = document.getElementById("formDiscount").value;
+      const priceVal = document.getElementById("formPrice").value;
+
+      const mrpElem = document.getElementById("outMrp");
+      const discBadge = document.getElementById("outDiscountBadge");
+      const discRow = document.getElementById("outDiscountRow");
+
+      const numMrp = parseFloat(String(mrpVal).replace(/[^0-9.]/g, ''));
+      const numDisc = parseFloat(String(discVal).replace(/[^0-9.]/g, ''));
+
+      if (numMrp > 0 && numDisc > 0) {
+        discRow.classList.remove("hidden");
+        mrpElem.innerText = formatCurrency(mrpVal);
+        discBadge.innerText = formatCurrency(discVal) + " OFF";
+        discBadge.classList.remove("hidden");
+      } else if (numMrp > 0) {
+        discRow.classList.remove("hidden");
+        mrpElem.innerText = formatCurrency(mrpVal);
+        discBadge.classList.add("hidden");
+      } else {
+        discRow.classList.add("hidden");
+      }
+
+      document.getElementById("outPrice").innerText = formatCurrency(priceVal) || "₹0";
+      document.getElementById("outRtoBadge").innerHTML = `<i class="fa-solid fa-circle-check"></i> ${document.getElementById("formRtoType").value}`;
+      document.getElementById("outRange").innerText = document.getElementById("formRange").value || "-";
+      document.getElementById("outTopSpeed").innerText = document.getElementById("formTopSpeed").value || "-";
+      document.getElementById("outBattery").innerText = document.getElementById("formBattery").value || "-";
+      document.getElementById("outCharging").innerText = document.getElementById("formCharging").value || "-";
+      document.getElementById("outWarranty").innerText = document.getElementById("formWarranty").value || "-";
+      document.getElementById("outIpRating").innerText = document.getElementById("formIpRating").value || "-";
+      document.getElementById("outTyresBox").innerText = document.getElementById("formTyres").value || "Tubeless Tyres";
+
+      // Realtime Features
+      const featBox = document.getElementById("outFeaturesContainer");
+      featBox.innerHTML = "";
+      (document.getElementById("formFeatures").value || "").split(",").map(f => f.trim()).filter(Boolean).forEach(f => {
+        const span = document.createElement("span");
+        span.className = "text-[9px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-semibold text-slate-700 flex items-center gap-1";
+        span.innerHTML = `<i class="fa-solid fa-check text-brand-green text-[8px]"></i> ${f}`;
+        featBox.appendChild(span);
+      });
+
+      // Realtime Specs Table
+      const tableBody = document.getElementById("outSpecsTable");
+      tableBody.innerHTML = "";
+
+      const baseSpecs = [
+        { label: "Motor Type & Power", value: document.getElementById("formMotor").value },
+        { label: "Brakes & Stopping Tech", value: document.getElementById("formBrakes").value },
+        { label: "Gradeability / Climbing", value: document.getElementById("formGradeability").value },
+        { label: "Chassis & Kerb Weight", value: document.getElementById("formWeight").value }
+      ];
+
+      const detailsRaw = document.getElementById("formDetails").value.trim().split("\n");
+      const customDetails = [];
+      detailsRaw.forEach(line => {
+        if (line.includes(":")) {
+          const parts = line.split(":");
+          customDetails.push({ label: parts[0].trim(), value: parts.slice(1).join(":").trim() });
+        }
+      });
+
+      const allSpecs = [...baseSpecs, ...customDetails];
+      allSpecs.forEach((s, idx) => {
+        if (!s.value) return;
+        const tr = document.createElement("tr");
+        tr.className = idx % 2 === 0 ? "bg-white" : "bg-slate-50/70";
+        tr.innerHTML = `
+          <td class="px-2.5 py-1 font-bold text-slate-700 w-1/3 border-r border-slate-100 text-[10px]">${s.label}</td>
+          <td class="px-2.5 py-1 text-slate-600 text-[10px]">${s.value}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function loadModelIntoView(id) {
+      const item = evDatabase.find(x => x.id === id) || evDatabase[0];
+      if (!item) return;
+      currentModelId = item.id;
+
+      // Populate Form
+      document.getElementById("formTitle").value = item.title || "";
+      document.getElementById("formSubtitle").value = item.subtitle || "";
+      document.getElementById("formMrp").value = item.mrp || "";
+      document.getElementById("formDiscount").value = item.discount || "";
+      document.getElementById("formPrice").value = item.price || "";
+      document.getElementById("formRtoType").value = item.rtoType || "Non-RTO Low Speed (No License Required)";
+      document.getElementById("formRange").value = item.range || "";
+      document.getElementById("formTopSpeed").value = item.topSpeed || "";
+      document.getElementById("formBattery").value = item.battery || "";
+      document.getElementById("formCharging").value = item.charging || "";
+      document.getElementById("formMotor").value = item.motor || "";
+      document.getElementById("formTyres").value = item.tyres || "";
+      document.getElementById("formBrakes").value = item.brakes || "";
+      document.getElementById("formGradeability").value = item.gradeability || "";
+      document.getElementById("formWeight").value = item.weight || "";
+      document.getElementById("formIpRating").value = item.ipRating || "";
+      document.getElementById("formWarranty").value = item.warranty || "";
+      document.getElementById("formFeatures").value = item.features || "";
+      document.getElementById("formImageUrl").value = item.imageUrl || "";
+
+      if (Array.isArray(item.details)) {
+        document.getElementById("formDetails").value = item.details.map(d => `${d.label}: ${d.value}`).join("\n");
+      }
+
+      document.getElementById("outImage").src = item.imageUrl || "https://via.placeholder.com/600x400?text=No+Photo";
+      
+      // Sync view
+      liveUpdate();
+    }
+
+    // Auto image compression
+    function handleCompressedImage(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+          document.getElementById("outImage").src = compressedDataUrl;
+          document.getElementById("formImageUrl").value = "";
+          
+          const currentItem = evDatabase.find(x => x.id === currentModelId);
+          if (currentItem) {
+            currentItem.imageUrl = compressedDataUrl;
+            saveDatabase();
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewUrl(url) {
+      if (url.trim()) {
+        document.getElementById("outImage").src = url.trim();
+        const currentItem = evDatabase.find(x => x.id === currentModelId);
+        if (currentItem) currentItem.imageUrl = url.trim();
+      }
+    }
+
+    // Direct password verification
+    function handleAdminToggle() {
+      const drawer = document.getElementById("adminPanelDrawer");
+      if (!drawer.classList.contains("hidden")) {
+        drawer.classList.add("hidden");
+        document.getElementById("panelToggleText").innerText = isPanelUnlocked ? "Open Admin Panel" : "Unlock Admin Panel";
+        return;
+      }
+      if (isPanelUnlocked) {
+        drawer.classList.remove("hidden");
+        document.getElementById("panelToggleText").innerText = "Close Admin Panel";
+      } else {
+        openPasswordModal();
+      }
+    }
+
+    function openPasswordModal() {
+      document.getElementById("passwordModal").classList.remove("hidden");
+      document.getElementById("adminPasswordInput").value = "";
+      document.getElementById("passwordError").classList.add("hidden");
+      document.getElementById("adminPasswordInput").focus();
+    }
+
+    function closePasswordModal() {
+      document.getElementById("passwordModal").classList.add("hidden");
+    }
+
+    function verifyPassword(e) {
+      e.preventDefault();
+      const entered = document.getElementById("adminPasswordInput").value.trim();
+      
+      if (entered === ADMIN_PASSWORD) {
+        isPanelUnlocked = true;
+        closePasswordModal();
+        document.getElementById("adminPanelDrawer").classList.remove("hidden");
+        document.getElementById("panelToggleText").innerText = "Close Admin Panel";
+        document.getElementById("adminLockIcon").className = "fa-solid fa-lock-open text-brand-green";
+      } else {
+        document.getElementById("passwordError").classList.remove("hidden");
+      }
+    }
+
+    function lockAdminPanel() {
+      isPanelUnlocked = false;
+      document.getElementById("adminPanelDrawer").classList.add("hidden");
+      document.getElementById("panelToggleText").innerText = "Unlock Admin Panel";
+      document.getElementById("adminLockIcon").className = "fa-solid fa-lock text-brand-green";
+    }
+
+    function createNewModel() {
+      const newTitle = prompt("Enter New EV Model Name:");
+      if (!newTitle) return;
+      const newId = "ev-" + Date.now();
+      const newObj = {
+        id: newId,
+        title: newTitle,
+        subtitle: "Electric Vehicle Spec Sheet",
+        mrp: "79990",
+        discount: "5000",
+        price: "74990",
+        rtoType: "Non-RTO Low Speed (No License Required)",
+        range: "80 Km Certified",
+        topSpeed: "25 km/h",
+        battery: "60V 30Ah Lithium-Ion",
+        charging: "3.5 Hours",
+        motor: "250W BLDC Hub Motor",
+        tyres: "90/100-10 Tubeless Tyres",
+        brakes: "Front Disc & Rear Drum",
+        gradeability: "10 Degrees",
+        weight: "72 Kgs",
+        ipRating: "IP67 Certified",
+        warranty: "3 Years Comprehensive",
+        features: "Digital Display, Reverse Mode, Anti-Theft",
+        imageUrl: "https://via.placeholder.com/600x400?text=" + encodeURIComponent(newTitle),
+        details: []
+      };
+      evDatabase.unshift(newObj);
+      saveDatabase();
+      populateModelDropdown();
+      loadModelIntoView(newId);
+    }
+
+    function deleteCurrentModel() {
+      if (evDatabase.length <= 1) {
+        alert("At least one model must remain in the catalog.");
+        return;
+      }
+      if (!confirm("Are you sure you want to delete this model?")) return;
+      evDatabase = evDatabase.filter(x => x.id !== currentModelId);
+      currentModelId = evDatabase[0].id;
+      saveDatabase();
+      populateModelDropdown();
+      loadModelIntoView(currentModelId);
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const detailsRaw = document.getElementById("formDetails").value.trim().split("\n");
+      const parsedDetails = [];
+      detailsRaw.forEach(line => {
+        if (line.includes(":")) {
+          const parts = line.split(":");
+          parsedDetails.push({ label: parts[0].trim(), value: parts.slice(1).join(":").trim() });
+        }
+      });
+
+      const currentItem = evDatabase.find(x => x.id === currentModelId);
+      if (!currentItem) return;
+
+      currentItem.title = document.getElementById("formTitle").value.trim();
+      currentItem.subtitle = document.getElementById("formSubtitle").value.trim();
+      currentItem.mrp = document.getElementById("formMrp").value.trim();
+      currentItem.discount = document.getElementById("formDiscount").value.trim();
+      currentItem.price = document.getElementById("formPrice").value.trim();
+      currentItem.rtoType = document.getElementById("formRtoType").value;
+      currentItem.range = document.getElementById("formRange").value.trim();
+      currentItem.topSpeed = document.getElementById("formTopSpeed").value.trim();
+      currentItem.battery = document.getElementById("formBattery").value.trim();
+      currentItem.charging = document.getElementById("formCharging").value.trim();
+      currentItem.motor = document.getElementById("formMotor").value.trim();
+      currentItem.tyres = document.getElementById("formTyres").value.trim();
+      currentItem.brakes = document.getElementById("formBrakes").value.trim();
+      currentItem.gradeability = document.getElementById("formGradeability").value.trim();
+      currentItem.weight = document.getElementById("formWeight").value.trim();
+      currentItem.ipRating = document.getElementById("formIpRating").value.trim();
+      currentItem.warranty = document.getElementById("formWarranty").value.trim();
+      currentItem.features = document.getElementById("formFeatures").value.trim();
+      currentItem.imageUrl = document.getElementById("formImageUrl").value.trim() || currentItem.imageUrl;
+      currentItem.details = parsedDetails;
+
+      saveDatabase();
+      populateModelDropdown();
+      alert("✅ Saved to browser storage successfully!");
+    }
+  </script>
+</body>
+</html>
